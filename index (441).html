@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --theme-color: #e50914;
+            --background-dark: #121212;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-primary);
+        }
+
+      
+        #grid-view { display: block; padding: 12px; }
+        #player-view { display: none; }
+
+        body.player-active #grid-view { display: none; }
+        body.player-active #player-view {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* === গ্রিড ভিউ স্টাইল === */
+        .poster-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .audio-poster {
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .audio-poster:hover {
+            transform: scale(1.05);
+        }
+        .audio-poster img {
+            width: 100%;
+            border-radius: 8px;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+        
+        
+        .player-header {
+            padding: 15px;
+            text-align: left;
+        }
+        .player-header .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .player-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #album-art {
+            width: 100%; max-width: 300px; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            aspect-ratio: 1 / 1; object-fit: cover;
+        }
+
+        .track-info { text-align: center; margin-top: 25px; }
+        #track-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
+        #track-artist { font-size: 1rem; color: var(--text-secondary); margin-top: 5px; }
+
+        .controls-container { width: 100%; max-width: 400px; margin-top: 20px; }
+        .timeline-container { width: 100%; padding: 10px 0; }
+        #timeline { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 5px; outline: none; cursor: pointer; }
+        #timeline::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; cursor: pointer; }
+        .time-display { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px; }
+
+        .main-controls { display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 10px; }
+        .main-controls button { background: none; border: none; color: var(--text-secondary); font-size: 1.8rem; cursor: pointer; transition: color 0.2s; }
+        .main-controls button:hover { color: var(--text-primary); }
+        #play-pause-btn { font-size: 3.5rem; color: var(--text-primary); }
+        
+        #download-btn { color: var(--text-secondary); text-decoration: none; display: inline-block; margin-top: 20px; font-size: 1rem; }
+        #download-btn:hover { color: var(--text-primary); }
+
+    </style>
+</head>
+<body>
+
+    <!-- ভিউ ১: গ্রিড (প্রথমে দেখা যাবে) -->
+    <div id="grid-view">
+        <h1 style="font-size: 1.8rem; margin-bottom: 20px;">Audio Library</h1>
+        <div class="poster-grid" id="audio-grid-container">
+            <!-- জাভাস্ক্রিপ্ট দিয়ে অডিও পোস্টারগুলো এখানে যোগ করা হবে -->
+        </div>
+    </div>
+
+    <!-- ভিউ ২: প্লেয়ার (প্রথমে লুকানো থাকবে) -->
+    <div id="player-view">
+        <header class="player-header">
+            <button class="back-btn"><i class="fas fa-chevron-down"></i></button>
+        </header>
+        <main class="player-main">
+            <img id="album-art" src="" alt="Album Art">
+            <div class="track-info">
+                <h1 id="track-title"></h1>
+                <p id="track-artist">Unknown Artist</p>
+            </div>
+            <div class="controls-container">
+                <div class="timeline-container">
+                    <input type="range" id="timeline" value="0" step="1">
+                    <div class="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">0:00</span>
+                    </div>
+                </div>
+                <div class="main-controls">
+                    <button id="prev-btn"><i class="fas fa-backward-step"></i></button>
+                    <button id="play-pause-btn"><i class="fas fa-play-circle"></i></button>
+                    <button id="next-btn"><i class="fas fa-forward-step"></i></button>
+                </div>
+                <div style="text-align: center;">
+                     <a id="download-btn" href="#" download><i class="fas fa-download"></i> Download</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <audio id="audio-element"></audio>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const body = document.body;
+        const audioEl = document.getElementById('audio-element');
+        const audioGridContainer = document.getElementById('audio-grid-container');
+        
+        // প্লেয়ার ভিউ এর এলিমেন্ট
+        const albumArt = document.getElementById('album-art');
+        const trackTitle = document.getElementById('track-title');
+        const timeline = document.getElementById('timeline');
+        const currentTimeEl = document.getElementById('current-time');
+        const totalTimeEl = document.getElementById('total-time');
+        const prevBtn = document.getElementById('prev-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const backBtn = document.querySelector('.back-btn');
+        
+        const playlist = [
+            { src: 'https://api.telegram.org/file/bot7893013232:AAE2NhZbvHgwboorjV3RL5wsfsviyQzFkDk/music/file_2.m4a', title: 'Mystical Journey', poster: 'https://i.ibb.co/PsRgphLj/IMG-20250713-084517-928.jpg' },
+            { src: 'https://api.telegram.org/file/bot7893013232:AAE2NhZbvHgwboorjV3RL5wsfsviyQzFkDk/music/file_3.m4a', title: 'Urban Beats', poster: 'https://i.ibb.co/R4s2krxc/IMG-20250713-084446-725.jpg' },
+            { src: 'https://api.telegram.org/file/bot7893013232:AAE2NhZbvHgwboorjV3RL5wsfsviyQzFkDk/music/file_4.m4a', title: 'Silent Forest', poster: 'https://i.ibb.co/rGjYyN0T/IMG-20250713-084518-081.jpg' },
+
+        ];
+
+        let currentTrackIndex = 0;
+
+        // ধাপ ১: গ্রিড তৈরি করা
+        playlist.forEach((track, index) => {
+            const posterDiv = document.createElement('div');
+            posterDiv.className = 'audio-poster';
+            posterDiv.dataset.index = index;
+            posterDiv.innerHTML = `<img src="${track.poster}" alt="${track.title}">`;
+            
+            posterDiv.addEventListener('click', () => {
+                body.classList.add('player-active');
+                loadTrack(index);
+                playTrack();
+            });
+            audioGridContainer.appendChild(posterDiv);
+        });
+
+        // ধাপ ২: প্লেয়ারের ফাংশন
+        function loadTrack(index) {
+            currentTrackIndex = index;
+            const track = playlist[index];
+            audioEl.src = track.src;
+            albumArt.src = track.poster;
+            trackTitle.textContent = track.title;
+            downloadBtn.href = track.src;
+            downloadBtn.setAttribute('download', track.title);
+        }
+
+        function playTrack() {
+            audioEl.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause-circle"></i>';
+        }
+
+        function pauseTrack() {
+            audioEl.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play-circle"></i>';
+        }
+        
+        function nextTrack() {
+            currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+            loadTrack(currentTrackIndex);
+            playTrack();
+        }
+        
+        function prevTrack() {
+            currentTrackIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+            loadTrack(currentTrackIndex);
+            playTrack();
+        }
+
+        // ধাপ ৩: ইভেন্ট লিসেনার
+        playPauseBtn.addEventListener('click', () => audioEl.paused ? playTrack() : pauseTrack());
+        nextBtn.addEventListener('click', nextTrack);
+        prevBtn.addEventListener('click', prevTrack);
+        audioEl.addEventListener('ended', nextTrack);
+
+        backBtn.addEventListener('click', () => {
+            body.classList.remove('player-active');
+            pauseTrack();
+        });
+
+        audioEl.addEventListener('timeupdate', () => {
+            if (audioEl.duration) {
+                timeline.value = audioEl.currentTime;
+                currentTimeEl.textContent = formatTime(audioEl.currentTime);
+            }
+        });
+        
+        audioEl.addEventListener('loadedmetadata', () => {
+            timeline.max = audioEl.duration;
+            totalTimeEl.textContent = formatTime(audioEl.duration);
+        });
+
+        timeline.addEventListener('input', () => audioEl.currentTime = timeline.value);
+
+        function formatTime(seconds) {
+            const s = Math.floor(seconds % 60);
+            const m = Math.floor(seconds / 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+    });
+    </script>
+</body>
+</html>
